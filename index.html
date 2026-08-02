@@ -75,11 +75,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
 #rulesModal .rule-section b{color:#7dd3fc}
 
 /* 主菜单 */
-#mainMenu{position:fixed;inset:0;background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:300;gap:20px}
+#mainMenu{position:fixed;inset:0;background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:300;gap:16px}
 #mainMenu h1{font-size:32px;color:#e2e8f0;letter-spacing:4px;margin-bottom:20px}
 .menu-btn{width:200px;height:48px;font-size:16px}
+.menu-desc{font-size:11px;color:#64748b;margin-top:-10px}
 
-/* 联机菜单 */
+/* 匹配菜单 */
+#matchMenu{position:fixed;inset:0;background:#0f172a;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:300;gap:16px;padding:20px}
+#matchMenu h2{font-size:24px;color:#e2e8f0;letter-spacing:2px;margin-bottom:10px}
+#matchStatus{font-size:16px;color:#fbbf24;margin-top:10px}
+#matchSpinner{width:40px;height:40px;border:3px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin 1s linear infinite;margin:20px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 联机菜单（房间对战） */
 #onlineMenu{position:fixed;inset:0;background:#0f172a;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:300;gap:16px;padding:20px}
 #onlineMenu h2{font-size:24px;color:#e2e8f0;letter-spacing:2px;margin-bottom:10px}
 .online-panel{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:12px}
@@ -116,6 +124,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
   #btnEnd{font-size:14px}
   #mainMenu h1{font-size:24px}
   .menu-btn{width:180px;height:44px;font-size:14px}
+  #matchMenu h2{font-size:20px}
   #onlineMenu h2{font-size:20px}
 }
 </style>
@@ -126,18 +135,32 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
 <div id="mainMenu">
   <h1>节点战争</h1>
   <button class="btn btn-primary menu-btn" id="btnPvE">人机对战</button>
-  <button class="btn btn-secondary menu-btn" id="btnPvP">在线对战</button>
+  <button class="btn btn-primary menu-btn" id="btnMatch">在线匹配</button>
+  <div class="menu-desc">自动匹配当前在线玩家</div>
+  <button class="btn btn-secondary menu-btn" id="btnPvP">房间对战</button>
+  <div class="menu-desc">创建或加入房间</div>
 </div>
 
-<!-- 联机菜单 -->
-<div id="onlineMenu">
-  <h2>在线对战</h2>
-  <div class="online-panel" id="onlinePanel">
-    <div style="display:flex;gap:6px;align-items:center">
-  <input type="text" id="inputServer" placeholder="后端地址（可选）" style="flex:1;font-size:12px" title="留空=同域，或填 https://xxx.onrender.com">
-  <button class="btn btn-secondary" id="btnSaveServer" style="font-size:11px;padding:4px 10px">保存</button>
+<!-- 在线匹配菜单 -->
+<div id="matchMenu">
+  <h2>在线匹配</h2>
+  <div class="online-panel" style="max-width:320px">
+    <input type="text" id="inputMatchName" placeholder="输入你的昵称" maxlength="24" value="玩家">
+    <div id="matchSpinner" style="display:none"></div>
+    <div id="matchStatus">点击开始匹配</div>
+    <div class="online-row">
+      <button class="btn btn-primary" id="btnStartMatch" style="flex:1">开始匹配</button>
+      <button class="btn btn-secondary" id="btnCancelMatch" style="flex:1;display:none">取消匹配</button>
+    </div>
+  </div>
+  <button class="btn btn-secondary menu-btn" id="btnBackFromMatch" style="margin-top:10px;width:200px">返回主菜单</button>
 </div>
-<input type="text" id="inputName" placeholder="输入你的昵称" maxlength="24" value="玩家">
+
+<!-- 房间对战菜单 -->
+<div id="onlineMenu">
+  <h2>房间对战</h2>
+  <div class="online-panel" id="onlinePanel">
+    <input type="text" id="inputName" placeholder="输入你的昵称" maxlength="24" value="玩家">
     <div class="online-row">
       <button class="btn btn-primary" id="btnCreateRoom" style="flex:1">创建房间</button>
       <button class="btn btn-secondary" id="btnJoinRoom" style="flex:1">加入房间</button>
@@ -177,6 +200,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
       <div style="display:flex;gap:4px;align-items:center">
         <button class="btn btn-secondary" id="btnZoomOut" style="padding:2px 8px;font-size:16px;line-height:1">-</button>
         <button class="btn btn-secondary" id="btnZoomIn" style="padding:2px 8px;font-size:16px;line-height:1">+</button>
+        <button class="btn btn-secondary" id="btnResetView" style="padding:2px 8px;font-size:12px;line-height:1">复位</button>
       </div>
     </div>
     <div id="headerStats">
@@ -252,10 +276,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
 
 <script>
 // ==================== 联机配置 ====================
-// 配置后端服务器地址
-// 同域部署（前后端都在 Render）→ 保持空字符串
-// 分离部署（前端 GitHub Pages + 后端 Render）→ 填写后端地址，如 'https://node-war-xxx.onrender.com'
-const SERVER_URL = localStorage.getItem('nodeWarServer') || (location.hostname === 'localhost' ? 'http://localhost:3000' : '');
+// ⚠️ 部署后请修改这里：把你的 Render 后端地址填进去
+// 示例: const DEFAULT_SERVER = 'https://node-war-server.onrender.com';
+const DEFAULT_SERVER = '';
+const SERVER_URL = location.hostname === 'localhost' ? 'http://localhost:3000' : (DEFAULT_SERVER || '');
 
 let socket = null;
 let mySide = null;
@@ -264,6 +288,7 @@ let roomCode = null;
 let opponentSubmitted = false;
 let iAmReady = false;
 let isHost = false;
+let isMatchmaking = false;
 
 // ==================== 原始游戏代码 ====================
 const cvs = document.getElementById('cvs');
@@ -308,11 +333,14 @@ cvs.addEventListener('wheel', e => {
 
 cvs.addEventListener('contextmenu', e => e.preventDefault());
 
+// ==================== 双指缩放 + 修复 ====================
 let isPinching = false, pinchStartDist = 0, pinchStartScale = 1, pinchCenter = { x: 0, y: 0 };
+let pinchJustEnded = false; // 修复：标记刚结束双指缩放
 
 cvs.addEventListener('touchstart', e => {
   if (e.touches.length === 2) {
     isPinching = true;
+    pinchJustEnded = false;
     const dx = e.touches[0].clientX - e.touches[1].clientX;
     const dy = e.touches[0].clientY - e.touches[1].clientY;
     pinchStartDist = Math.sqrt(dx * dx + dy * dy);
@@ -340,7 +368,13 @@ cvs.addEventListener('touchmove', e => {
   }
 }, { passive: false });
 
-cvs.addEventListener('touchend', e => { if (e.touches.length < 2) isPinching = false; });
+cvs.addEventListener('touchend', e => {
+  if (e.touches.length < 2) {
+    if (isPinching) pinchJustEnded = true; // 修复：标记刚结束pinch
+    isPinching = false;
+    isDragging = false; // 修复：防止残留拖拽状态
+  }
+});
 
 const CFG = { N_MIN: 15, N_MAX: 18, INIT: 5 };
 let S = { turn: 1, phase: 'player', nodes: [], edges: [], adj: [], sel: null, tgt: null, pending: [], previewDiff: [], previewState: null, aiMoves: [], animParticles: null, over: false, history: [], replayMode: false, replayIndex: 0, replayPlaying: false, replayTimer: null, replayPending: [], replayAiMoves: [] };
@@ -927,7 +961,6 @@ function resolveOnlineTurn(movesA, movesB) {
 
   const turnRecord = { turn: S.turn, pending: JSON.parse(JSON.stringify(mySide === 'A' ? movesA : movesB)), aiMoves: JSON.parse(JSON.stringify(mySide === 'A' ? movesB : movesA)), beforeState: JSON.parse(JSON.stringify(S.nodes.map(n => ({...n})))), afterState: null };
 
-  // 先应用A的移动
   for (const move of movesA) {
     if (S.nodes[move.from].owner !== 'A') continue;
     if (S.nodes[move.from].troops < move.amt) continue;
@@ -946,7 +979,6 @@ function resolveOnlineTurn(movesA, movesB) {
     }
   }
 
-  // 再应用B的移动（作为arrivals）
   const arrivals = {};
   for (const move of movesB) {
     if (S.nodes[move.from].owner !== 'B') continue;
@@ -1036,6 +1068,34 @@ document.getElementById('btnRestart').addEventListener('click', () => {
 document.getElementById('btnZoomIn').addEventListener('click', () => zoomCenter(0.3));
 document.getElementById('btnZoomOut').addEventListener('click', () => zoomCenter(-0.3));
 
+/* ==================== 复位视图 ==================== */
+function resetView() {
+  if (!S.nodes || S.nodes.length === 0) return;
+  const mySightSide = isOnline ? mySide : 'A';
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let hasVisible = false;
+  for (const n of S.nodes) {
+    if (!n['expl' + mySightSide]) continue;
+    hasVisible = true;
+    minX = Math.min(minX, n.x);
+    minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x);
+    maxY = Math.max(maxY, n.y);
+  }
+  if (!hasVisible) return;
+  const padding = 80;
+  const mapW = maxX - minX + padding * 2;
+  const mapH = maxY - minY + padding * 2;
+  const scaleX = W / mapW;
+  const scaleY = H / mapH;
+  view.scale = Math.max(0.5, Math.min(scaleX, scaleY, 1.5));
+  view.offsetX = (W / 2 / view.scale) - (minX + maxX) / 2;
+  view.offsetY = (H / 2 / view.scale) - (minY + maxY) / 2;
+  draw();
+}
+
+document.getElementById('btnResetView').addEventListener('click', resetView);
+
 /* ==================== 待执行指令UI ==================== */
 function updatePendingUI() {
   const card = document.getElementById('pendingCard');
@@ -1103,7 +1163,7 @@ const RULES_HTML = `
 <div class="rule-section"><b>补给规则：</b>节点必须能通过一条完全由己方节点组成的路径连通至大本营，才视为有补给。</div>
 <div class="rule-section"><b>视野规则：</b>你只能看到己方节点及其直接相邻节点，以及从相邻节点延伸出去的路线的一半（靠近相邻节点的那一半可见，靠近未知节点的那一半不可见）。已探索但不在当前视野内的节点显示为"？"。视野只在回合结束时统一刷新。</div>
 <div class="rule-section"><b>联机对战：</b>双方使用完全相同的地图，同时下达指令后同时结算。断线将判负。</div>
-<div class="rule-section"><b>地图操作：</b>鼠标滚轮以指针位置为中心缩放地图；按住左键／单指拖动可拖拽平移地图；双指捏合可缩放地图。</div>
+<div class="rule-section"><b>地图操作：</b>鼠标滚轮以指针位置为中心缩放地图；按住左键／单指拖动可拖拽平移地图；双指捏合可缩放地图。点击「复位」按钮可将地图重置为最佳视野。</div>
 `;
 
 function showRules() { document.getElementById('rulesContent').innerHTML = RULES_HTML; document.getElementById('rulesOverlay').classList.add('show'); }
@@ -1288,12 +1348,14 @@ function hit(wx, wy) {
   return null;
 }
 
-/* ==================== 交互 ==================== */
+/* ==================== 交互（修复双指缩放残留拖拽）==================== */
 function getPos(e) { const r = cvs.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
 let isDragging = false, dragStart = { x: 0, y: 0 }, dragViewStart = { x: 0, y: 0 };
 
 cvs.addEventListener('pointerdown', e => {
   if (S.over || isPinching || S.phase === 'animating') return;
+  // 修复：双指缩放期间不启动拖拽
+  if (e.pointerType === 'touch' && isPinching) return;
   e.preventDefault(); cvs.setPointerCapture(e.pointerId);
   isDragging = false; dragStart.x = e.clientX; dragStart.y = e.clientY;
   dragViewStart.x = view.offsetX; dragViewStart.y = view.offsetY;
@@ -1301,6 +1363,12 @@ cvs.addEventListener('pointerdown', e => {
 
 window.addEventListener('pointermove', e => {
   if (isPinching) return;
+  // 修复：刚结束双指缩放时，忽略这次移动防止跳跃
+  if (pinchJustEnded) {
+    pinchJustEnded = false;
+    isDragging = false;
+    return;
+  }
   if (!cvs.hasPointerCapture(e.pointerId)) return;
   const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
   if (!isDragging && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) { isDragging = true; cvs.style.cursor = 'grabbing'; }
@@ -1318,7 +1386,7 @@ window.addEventListener('pointerup', e => {
 window.addEventListener('pointercancel', e => {
   if (!cvs.hasPointerCapture(e.pointerId)) return;
   cvs.releasePointerCapture(e.pointerId); cvs.style.cursor = '';
-  isDragging = false; isPinching = false;
+  isDragging = false; isPinching = false; pinchJustEnded = false;
 });
 
 function handleCanvasClick(e) {
@@ -1455,19 +1523,24 @@ function updateUI() {
 }
 
 /* ==================== 主菜单 & 联机 ==================== */
+function showMainMenu() {
+  document.getElementById('mainMenu').style.display = 'flex';
+  document.getElementById('matchMenu').style.display = 'none';
+  document.getElementById('onlineMenu').style.display = 'none';
+  document.getElementById('wrap').style.display = 'none';
+  document.getElementById('onlineBar').style.display = 'none';
+  document.getElementById('overlay').classList.remove('show');
+  S.sel = null; S.tgt = null;
+  document.getElementById('nodeCard').style.display = 'none'; hideAction();
+}
+
 function backToMainMenu() {
   S.replayMode = false; S.replayPlaying = false; S.replayAnimating = false;
   S.animParticles = null; if (S.replayTimer) { clearTimeout(S.replayTimer); S.replayTimer = null; }
   document.getElementById('replayBar').style.display = 'none';
-  document.getElementById('overlay').classList.remove('show');
-  document.getElementById('mainMenu').style.display = 'flex';
-  document.getElementById('onlineMenu').style.display = 'none';
-  document.getElementById('onlineBar').style.display = 'none';
-  document.getElementById('wrap').style.display = 'none';
-  S.sel = null; S.tgt = null;
-  document.getElementById('nodeCard').style.display = 'none'; hideAction();
   if (socket) { socket.disconnect(); socket = null; }
-  isOnline = false; mySide = null; roomCode = null; iAmReady = false; isHost = false;
+  isOnline = false; mySide = null; roomCode = null; iAmReady = false; isHost = false; isMatchmaking = false;
+  showMainMenu();
 }
 
 function backToRoom() {
@@ -1481,42 +1554,84 @@ function backToRoom() {
   showRoomInfo();
 }
 
+// 人机对战
 document.getElementById('btnPvE').addEventListener('click', () => {
   document.getElementById('mainMenu').style.display = 'none';
   document.getElementById('wrap').style.display = 'flex';
   isOnline = false; mySide = 'A';
   resetGame();
+  setTimeout(resetView, 100);
 });
 
+// 在线匹配
+document.getElementById('btnMatch').addEventListener('click', () => {
+  document.getElementById('mainMenu').style.display = 'none';
+  document.getElementById('matchMenu').style.display = 'flex';
+  if (!socket) initSocket();
+});
+
+document.getElementById('btnBackFromMatch').addEventListener('click', () => {
+  if (isMatchmaking && socket) socket.emit('leave_matchmaking');
+  isMatchmaking = false;
+  backToMainMenu();
+});
+
+document.getElementById('btnStartMatch').addEventListener('click', () => {
+  if (!socket) initSocket();
+  const name = document.getElementById('inputMatchName').value;
+  socket.emit('join_matchmaking', { name });
+  isMatchmaking = true;
+  document.getElementById('matchSpinner').style.display = 'block';
+  document.getElementById('matchStatus').textContent = '正在匹配对手...';
+  document.getElementById('btnStartMatch').style.display = 'none';
+  document.getElementById('btnCancelMatch').style.display = 'block';
+});
+
+document.getElementById('btnCancelMatch').addEventListener('click', () => {
+  if (socket) socket.emit('leave_matchmaking');
+  isMatchmaking = false;
+  document.getElementById('matchSpinner').style.display = 'none';
+  document.getElementById('matchStatus').textContent = '点击开始匹配';
+  document.getElementById('btnStartMatch').style.display = 'block';
+  document.getElementById('btnCancelMatch').style.display = 'none';
+});
+
+// 房间对战
 document.getElementById('btnPvP').addEventListener('click', () => {
   document.getElementById('mainMenu').style.display = 'none';
   document.getElementById('onlineMenu').style.display = 'flex';
-  initSocket();
+  if (!socket) initSocket();
 });
 
 document.getElementById('btnBackToMain').addEventListener('click', backToMainMenu);
 
 // ==================== Socket.IO 联机逻辑 ====================
-document.getElementById('btnSaveServer').addEventListener('click', () => {
-  const url = document.getElementById('inputServer').value.trim();
-  if (url) {
-    localStorage.setItem('nodeWarServer', url);
-    alert('已保存后端地址: ' + url + '\n刷新页面后生效');
-  } else {
-    localStorage.removeItem('nodeWarServer');
-    alert('已清除后端地址，使用同域模式');
-  }
-});
-// 如果 localStorage 有保存的地址，显示在输入框
-const savedServer = localStorage.getItem('nodeWarServer');
-if (savedServer) document.getElementById('inputServer').value = savedServer;
-
 function initSocket() {
   if (socket) return;
+  if (!SERVER_URL) {
+    alert('后端地址未配置，请联系管理员');
+    return;
+  }
   socket = io(SERVER_URL);
   socket.on('connect', () => { updateOnlineStatus('已连接'); });
   socket.on('disconnect', () => { updateOnlineStatus('已断开'); });
   socket.on('error_msg', (data) => { alert(data.message); });
+
+  socket.on('match_found', (data) => {
+    isMatchmaking = false;
+    mySide = data.yourSide;
+    roomCode = data.room.code;
+    document.getElementById('matchMenu').style.display = 'none';
+    startOnlineGame(data.seed, data.opponent);
+  });
+
+  socket.on('matchmaking_joined', () => {
+    document.getElementById('matchStatus').textContent = '正在匹配对手...';
+  });
+
+  socket.on('matchmaking_left', () => {
+    document.getElementById('matchStatus').textContent = '已取消匹配';
+  });
 
   socket.on('room_created', (data) => {
     roomCode = data.code; isHost = true; iAmReady = false;
@@ -1534,6 +1649,7 @@ function initSocket() {
   socket.on('game_started', (data) => {
     mySide = data.yourSide;
     roomCode = data.room.code;
+    document.getElementById('onlineMenu').style.display = 'none';
     startOnlineGame(data.seed);
   });
 
@@ -1559,7 +1675,10 @@ function initSocket() {
   });
 }
 
-function updateOnlineStatus(text) { document.getElementById('onlineStatus').textContent = text; }
+function updateOnlineStatus(text) {
+  const el = document.getElementById('onlineStatus');
+  if (el) el.textContent = text;
+}
 function updateOpponentStatus(text) { document.getElementById('opponentStatus').textContent = text; }
 
 function updateRoomUI(room) {
@@ -1614,14 +1733,13 @@ document.getElementById('btnLeaveRoom').addEventListener('click', () => {
   roomCode = null; isHost = false; iAmReady = false;
 });
 
-function startOnlineGame(seed) {
-  document.getElementById('onlineMenu').style.display = 'none';
+function startOnlineGame(seed, opponentName) {
   document.getElementById('wrap').style.display = 'flex';
   document.getElementById('onlineBar').style.display = 'flex';
-  document.getElementById('onlineRoomCode').textContent = '房间: ' + roomCode;
+  document.getElementById('onlineRoomCode').textContent = '房间: ' + (roomCode || '匹配对战');
   document.getElementById('mySideTag').textContent = mySide === 'A' ? 'A方' : 'B方';
   document.getElementById('mySideTag').className = 'side-tag ' + mySide;
-  updateOpponentStatus('等待下达指令...');
+  updateOpponentStatus(opponentName ? '对手: ' + opponentName : '等待下达指令...');
 
   view.scale = 1; view.offsetX = 0; view.offsetY = 0;
   S = { turn: 1, phase: 'player', nodes: [], edges: [], adj: [], sel: null, tgt: null, pending: [], previewDiff: [], previewState: null, aiMoves: [], animParticles: null, over: false, history: [], replayMode: false, replayIndex: 0, replayPlaying: false, replayTimer: null, replayPending: [], replayAiMoves: [] };
@@ -1633,6 +1751,7 @@ function startOnlineGame(seed) {
   isOnline = true;
   generate(seed);
   updateSupply(); updateVision(); updateUI(); draw();
+  setTimeout(resetView, 100);
 }
 
 /* ==================== 复盘功能 ==================== */
