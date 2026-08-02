@@ -278,7 +278,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
 // ==================== 联机配置 ====================
 // ⚠️ 部署后请修改这里：把你的 Render 后端地址填进去
 // 示例: const DEFAULT_SERVER = 'https://node-war-server.onrender.com';
-const DEFAULT_SERVER = 'https://node-war-production.up.railway.app/';
+const DEFAULT_SERVER = 'https://node-war-product.up.railway.app';
 const SERVER_URL = location.hostname === 'localhost' ? 'http://localhost:3000' : (DEFAULT_SERVER || '');
 
 let socket = null;
@@ -289,6 +289,7 @@ let opponentSubmitted = false;
 let iAmReady = false;
 let isHost = false;
 let isMatchmaking = false;
+let gameFromMatchmaking = false;
 
 // ==================== 原始游戏代码 ====================
 const cvs = document.getElementById('cvs');
@@ -1058,12 +1059,13 @@ function resetGame() {
   document.getElementById('actionArea').style.display = 'none';
   document.getElementById('pendingCard').style.display = 'none';
   generate(isOnline ? null : undefined);
-  updateSupply(); updateVision(); updateUI(); draw();
+  updateSupply(); updateVision(); updateUI();
+  setTimeout(() => { resize(); draw(); }, 50);
 }
 
 document.getElementById('btnRestart').addEventListener('click', () => {
   if (isOnline) {
-    if (isMatchmaking) backToMainMenu();
+    if (gameFromMatchmaking) backToMainMenu();
     else backToRoom();
   } else {
     resetGame();
@@ -1542,7 +1544,12 @@ function backToMainMenu() {
   S.replayMode = false; S.replayPlaying = false; S.replayAnimating = false;
   S.animParticles = null; if (S.replayTimer) { clearTimeout(S.replayTimer); S.replayTimer = null; }
   document.getElementById('replayBar').style.display = 'none';
-  isOnline = false; mySide = null; roomCode = null; iAmReady = false; isHost = false; isMatchmaking = false;
+  isOnline = false; mySide = null; roomCode = null; iAmReady = false; isHost = false; isMatchmaking = false; gameFromMatchmaking = false;
+  // 重置匹配菜单UI
+  document.getElementById('matchSpinner').style.display = 'none';
+  document.getElementById('matchStatus').textContent = '点击开始匹配';
+  document.getElementById('btnStartMatch').style.display = 'block';
+  document.getElementById('btnCancelMatch').style.display = 'none';
   showMainMenu();
 }
 
@@ -1570,6 +1577,11 @@ document.getElementById('btnPvE').addEventListener('click', () => {
 document.getElementById('btnMatch').addEventListener('click', () => {
   document.getElementById('mainMenu').style.display = 'none';
   document.getElementById('matchMenu').style.display = 'flex';
+  // 重置匹配菜单状态
+  document.getElementById('matchSpinner').style.display = 'none';
+  document.getElementById('matchStatus').textContent = '点击开始匹配';
+  document.getElementById('btnStartMatch').style.display = 'block';
+  document.getElementById('btnCancelMatch').style.display = 'none';
   if (!socket) initSocket();
 });
 
@@ -1760,9 +1772,10 @@ function startOnlineGame(seed, opponentName) {
   document.getElementById('actionArea').style.display = 'none';
   document.getElementById('pendingCard').style.display = 'none';
 
+  gameFromMatchmaking = isMatchmaking;
   isOnline = true;
   generate(seed);
-  updateSupply(); updateVision(); updateUI(); 
+  updateSupply(); updateVision(); updateUI();
   setTimeout(() => { resize(); resetView(); draw(); }, 100);
 }
 
@@ -1888,7 +1901,6 @@ function updateReplayUI() {
 
 /* ==================== 启动 ==================== */
 function init() {
-  resize();
   document.getElementById('wrap').style.display = 'none';
   setTimeout(() => {
     if (!socket && SERVER_URL) initSocket();
