@@ -402,15 +402,18 @@ function srand() {
 }
 
 /* ==================== 地图生成（支持种子）==================== */
-function generate(seed) {
+function generate(seed, mapW, mapH) {
   if (seed) setSeed(seed);
   const n = srnd(CFG.N_MIN, CFG.N_MAX);
   const nodes = [];
-  const pad = Math.min(W, H) * 0.12;
+  // 使用传入的尺寸或当前 W/H，确保不受布局时序影响
+  const w = mapW || W || window.innerWidth;
+  const h = mapH || H || (window.innerHeight - 288);
+  const pad = Math.min(w, h) * 0.12;
 
   const cols = 6, rows = 6;
-  const cellW = (W - 2 * pad) / cols;
-  const cellH = (H - 2 * pad) / rows;
+  const cellW = (w - 2 * pad) / cols;
+  const cellH = (h - 2 * pad) / rows;
   const positions = [];
 
   for (let r = 0; r < rows; r++) {
@@ -431,7 +434,7 @@ function generate(seed) {
   const actualN = Math.min(n, positions.length + 2);
 
   nodes.push({ id: 0, x: pad, y: pad, owner: 'A', isHQ: true, troops: CFG.INIT, age: 0, explA: true, explB: false, sightA: true, sightB: false, supply: true });
-  nodes.push({ id: 1, x: W - pad, y: H - pad, owner: 'B', isHQ: true, troops: CFG.INIT, age: 0, explA: false, explB: true, sightA: false, sightB: true, supply: true });
+  nodes.push({ id: 1, x: w - pad, y: h - pad, owner: 'B', isHQ: true, troops: CFG.INIT, age: 0, explA: false, explB: true, sightA: false, sightB: true, supply: true });
 
   for (let i = 2; i < actualN; i++) {
     nodes.push({ id: i, x: positions[i - 2].x, y: positions[i - 2].y, owner: null, troops: 0, age: 0, isHQ: false, explA: false, explB: false, sightA: false, sightB: false, supply: false });
@@ -497,7 +500,7 @@ function generate(seed) {
     if (hubs.has(u) || hubs.has(v)) continue;
     const degU = adj[u].length, degV = adj[v].length;
     if (degU >= 3 || degV >= 3) continue;
-    if (d > Math.min(W, H) * 0.35) continue;
+    if (d > Math.min(w, h) * 0.35) continue;
     edges.push([u, v]);
     adj[u].push(v); adj[v].push(u);
   }
@@ -548,7 +551,7 @@ function generate(seed) {
     }
 
     let bestDir = 1, bestMag = 0.25, bestScore = -Infinity;
-    const safeR = Math.min(W, H) * 0.026 * 2.5;
+    const safeR = Math.min(w, h) * 0.026 * 2.5;
     for (const dir of [1, -1]) {
       for (const mag of [0.15, 0.3, 0.45, 0.6]) {
         const cp = getCurveControl(a, b, dir, mag);
@@ -713,7 +716,7 @@ function aiDecide(aiNodes = S.nodes) {
       }
       else if (t.owner === 'B' && !t.supply) sc += 200;
       else if (t.owner === 'B' && t.troops < 3) sc += 50;
-      if (playerHQVisible) { const distToCenter = Math.sqrt((t.x - W/2)**2 + (t.y - H/2)**2); sc -= distToCenter * 0.1; }
+      if (playerHQVisible) { const distToCenter = Math.sqrt((t.x - w/2)**2 + (t.y - h/2)**2); sc -= distToCenter * 0.1; }
       if (perceivedOwner === 'A' && sight && perceivedTroops > n.troops * 0.8) sc -= 150;
       if (sc > bestSc) { bestSc = sc; best = t; }
     }
