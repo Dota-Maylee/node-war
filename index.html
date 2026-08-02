@@ -134,6 +134,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
 <!-- 主菜单 -->
 <div id="mainMenu">
   <h1>节点战争</h1>
+  <div id="mainOnlineCount" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px 16px;font-size:13px;color:#94a3b8;margin-bottom:10px">
+    👥 在线人数: <span id="mainOnlineNum" style="color:#38bdf8;font-weight:bold">连接中...</span>
+  </div>
   <button class="btn btn-secondary menu-btn" id="btnPvE">人机对战</button>
   <button class="btn btn-secondary menu-btn" id="btnMatch">在线匹配</button>
   <div class="menu-desc">自动匹配当前在线玩家</div>
@@ -161,11 +164,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
   <h2>房间对战</h2>
   <div class="online-panel" id="onlinePanel">
     <input type="text" id="inputName" placeholder="输入你的昵称" maxlength="24" value="玩家">
-    <div class="online-row">
-      <button class="btn btn-primary" id="btnCreateRoom" style="flex:1">创建房间</button>
-      <button class="btn btn-secondary" id="btnJoinRoom" style="flex:1">加入房间</button>
-    </div>
-    <input type="text" id="inputCode" placeholder="输入房间号" maxlength="6" style="text-transform:uppercase">
+    <input type="text" id="inputCode" placeholder="输入房间号（留空则创建新房）" maxlength="6" style="text-transform:uppercase">
+    <button class="btn btn-primary" id="btnEnterRoom" style="width:100%;margin-top:4px">进入房间</button>
     <div id="roomInfo">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:14px;font-weight:bold" id="roomCodeDisplay">房间: -</span>
@@ -1613,9 +1613,21 @@ function initSocket() {
     return;
   }
   socket = io(SERVER_URL);
-  socket.on('connect', () => { updateOnlineStatus('已连接'); });
+  socket.on('connect', () => { 
+    updateOnlineStatus('已连接'); 
+  });
+  socket.on('connect_error', (err) => { 
+    console.error('连接失败:', err.message); 
+    updateOnlineStatus('连接失败'); 
+    const el = document.getElementById('mainOnlineNum');
+    if (el) { el.textContent = '离线'; el.style.color = '#f87171'; }
+  });
+  socket.on('online_count', (count) => {
+    const el = document.getElementById('mainOnlineNum');
+    if (el) { el.textContent = count; el.style.color = '#38bdf8'; }
+  });
   socket.on('disconnect', () => { updateOnlineStatus('已断开'); });
-  socket.on('error_msg', (data) => { alert(data.message); });
+  socket.on('error_msg', (data) => { alert(data.message || '操作失败'); });
 
   socket.on('match_found', (data) => {
     isMatchmaking = false;
@@ -1703,18 +1715,15 @@ function showRoomInfo() {
   document.getElementById('roomInfo').style.display = 'flex';
 }
 
-document.getElementById('btnCreateRoom').addEventListener('click', () => {
+document.getElementById('btnEnterRoom').addEventListener('click', () => {
   if (!socket) initSocket();
+  const code = document.getElementById('inputCode').value.trim().toUpperCase();
   const name = document.getElementById('inputName').value;
-  socket.emit('create_room', { name });
-});
-
-document.getElementById('btnJoinRoom').addEventListener('click', () => {
-  if (!socket) initSocket();
-  const code = document.getElementById('inputCode').value;
-  const name = document.getElementById('inputName').value;
-  if (!code) { alert('请输入房间号'); return; }
-  socket.emit('join_room', { code, name });
+  if (code) {
+    socket.emit('join_room', { code, name });
+  } else {
+    socket.emit('create_room', { name });
+  }
 });
 
 document.getElementById('btnReady').addEventListener('click', () => {
@@ -1878,6 +1887,9 @@ function updateReplayUI() {
 function init() {
   resize();
   document.getElementById('wrap').style.display = 'none';
+  setTimeout(() => {
+    if (!socket && SERVER_URL) initSocket();
+  }, 300);
 }
 setTimeout(init, 150);
 </script>
