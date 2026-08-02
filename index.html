@@ -1542,7 +1542,6 @@ function backToMainMenu() {
   S.replayMode = false; S.replayPlaying = false; S.replayAnimating = false;
   S.animParticles = null; if (S.replayTimer) { clearTimeout(S.replayTimer); S.replayTimer = null; }
   document.getElementById('replayBar').style.display = 'none';
-  if (socket) { socket.disconnect(); socket = null; }
   isOnline = false; mySide = null; roomCode = null; iAmReady = false; isHost = false; isMatchmaking = false;
   showMainMenu();
 }
