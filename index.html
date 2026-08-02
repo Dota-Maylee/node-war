@@ -1759,8 +1759,8 @@ function startOnlineGame(seed, opponentName) {
 
   isOnline = true;
   generate(seed);
-  updateSupply(); updateVision(); updateUI(); draw();
-  setTimeout(resetView, 100);
+  updateSupply(); updateVision(); updateUI(); 
+  setTimeout(() => { resize(); resetView(); draw(); }, 100);
 }
 
 /* ==================== 复盘功能 ==================== */
