@@ -1062,8 +1062,12 @@ function resetGame() {
 }
 
 document.getElementById('btnRestart').addEventListener('click', () => {
-  if (isOnline) backToRoom();
-  else resetGame();
+  if (isOnline) {
+    if (isMatchmaking) backToMainMenu();
+    else backToRoom();
+  } else {
+    resetGame();
+  }
 });
 document.getElementById('btnZoomIn').addEventListener('click', () => zoomCenter(0.3));
 document.getElementById('btnZoomOut').addEventListener('click', () => zoomCenter(-0.3));
