@@ -6,8 +6,12 @@ const path = require("path");
 const app = express();
 const server = http.createServer(app);
 
-const publicPath = path.join(__dirname, "public");
-app.use(express.static(publicPath));
+// 显式根路由：确保 Railway 上能正确返回首页
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// 静态文件服务
 app.use(express.static(__dirname));
 
 app.use((req, res, next) => {
@@ -29,7 +33,7 @@ const io = new Server(server, {
 
 // ============ 数据结构 ============
 const rooms = new Map();
-const matchmaking = []; // 匹配队列
+const matchmaking = [];
 let onlineCount = 0;
 
 function generateRoomCode() {
@@ -169,16 +173,12 @@ io.on("connection", (socket) => {
   io.emit("online_count", onlineCount);
   socket.playerName = "玩家";
 
-  // ---- 匹配系统 ----
   socket.on("join_matchmaking", (payload) => {
     const name = cleanName(payload?.name);
     socket.playerName = name;
-    // 如果已经在匹配队列中，先移除
     const existingIdx = matchmaking.findIndex((m) => m.socket.id === socket.id);
     if (existingIdx !== -1) matchmaking.splice(existingIdx, 1);
-    // 如果已经在房间中，先离开
     removeFromRoom(socket);
-
     matchmaking.push({ socket, name });
     socket.emit("matchmaking_joined");
     tryMatch();
@@ -190,7 +190,6 @@ io.on("connection", (socket) => {
     socket.emit("matchmaking_left");
   });
 
-  // ---- 房间系统 ----
   socket.on("create_room", (payload) => {
     const now = Date.now();
     if (socket.lastRoomCreate && now - socket.lastRoomCreate < 2000) {
@@ -203,7 +202,6 @@ io.on("connection", (socket) => {
     }
     socket.lastRoomCreate = now;
     removeFromRoom(socket);
-    // 离开匹配队列
     const mmIdx = matchmaking.findIndex((m) => m.socket.id === socket.id);
     if (mmIdx !== -1) matchmaking.splice(mmIdx, 1);
 
@@ -282,12 +280,10 @@ io.on("connection", (socket) => {
       room: getRoomPublic(room),
       you: socket.id,
     });
-    socket
-      .to(code)
-      .emit("player_joined", {
-        player: { id: socket.id, name },
-        room: getRoomPublic(room),
-      });
+    socket.to(code).emit("player_joined", {
+      player: { id: socket.id, name },
+      room: getRoomPublic(room),
+    });
   });
 
   socket.on("leave_room", () => removeFromRoom(socket));
@@ -402,7 +398,6 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     onlineCount--;
     io.emit("online_count", onlineCount);
-    // 从匹配队列移除
     const mmIdx = matchmaking.findIndex((m) => m.socket.id === socket.id);
     if (mmIdx !== -1) matchmaking.splice(mmIdx, 1);
     removeFromRoom(socket);
