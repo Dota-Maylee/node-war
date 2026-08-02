@@ -1059,8 +1059,7 @@ function resetGame() {
   document.getElementById('actionArea').style.display = 'none';
   document.getElementById('pendingCard').style.display = 'none';
   generate(isOnline ? null : undefined);
-  updateSupply(); updateVision(); updateUI();
-  setTimeout(() => { resize(); draw(); }, 50);
+  updateSupply(); updateVision(); updateUI(); draw();
 }
 
 document.getElementById('btnRestart').addEventListener('click', () => {
@@ -1772,11 +1771,10 @@ function startOnlineGame(seed, opponentName) {
   document.getElementById('actionArea').style.display = 'none';
   document.getElementById('pendingCard').style.display = 'none';
 
-  gameFromMatchmaking = isMatchmaking;
   isOnline = true;
   generate(seed);
-  updateSupply(); updateVision(); updateUI();
-  setTimeout(() => { resize(); resetView(); draw(); }, 100);
+  updateSupply(); updateVision(); updateUI(); draw();
+  setTimeout(resetView, 100);
 }
 
 /* ==================== 复盘功能 ==================== */
