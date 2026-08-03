@@ -406,7 +406,7 @@ function generate(seed, mapW, mapH) {
   if (seed) setSeed(seed);
   const n = srnd(CFG.N_MIN, CFG.N_MAX);
   const nodes = [];
-  // 使用传入的尺寸或当前 W/H，确保不受布局时序影响
+  // 使用传入的尺寸，确保不受布局时序影响
   const w = mapW || W || window.innerWidth;
   const h = mapH || H || (window.innerHeight - 288);
   const pad = Math.min(w, h) * 0.12;
@@ -716,7 +716,7 @@ function aiDecide(aiNodes = S.nodes) {
       }
       else if (t.owner === 'B' && !t.supply) sc += 200;
       else if (t.owner === 'B' && t.troops < 3) sc += 50;
-      if (playerHQVisible) { const distToCenter = Math.sqrt((t.x - w/2)**2 + (t.y - h/2)**2); sc -= distToCenter * 0.1; }
+      if (playerHQVisible) { const distToCenter = Math.sqrt((t.x - W/2)**2 + (t.y - H/2)**2); sc -= distToCenter * 0.1; }
       if (perceivedOwner === 'A' && sight && perceivedTroops > n.troops * 0.8) sc -= 150;
       if (sc > bestSc) { bestSc = sc; best = t; }
     }
@@ -1647,6 +1647,7 @@ function initSocket() {
   socket.on('error_msg', (data) => { alert(data.message || '操作失败'); });
 
   socket.on('match_found', (data) => {
+    gameFromMatchmaking = true;
     isMatchmaking = false;
     mySide = data.yourSide;
     roomCode = data.room.code;
